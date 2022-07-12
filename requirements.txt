@@ -1,0 +1,8 @@
+pyperclip==1.8.2
+requests
+pandas
+tqdm
+simplejson
+pyecharts
+bs4
+webbrowser
