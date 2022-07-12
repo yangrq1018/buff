@@ -5,4 +5,5 @@ tqdm
 simplejson
 pyecharts
 bs4
-webbrowser
+lxml
+xlsxwriter
