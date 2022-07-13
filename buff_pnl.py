@@ -1,18 +1,9 @@
 import requests
 import bs4
-import tempfile
-import webbrowser
 import pandas as pd
 import re
-from buff_cookie import get_cookie
 from tqdm import tqdm
-
-
-def open_in_browser(res):
-    f = tempfile.NamedTemporaryFile(suffix='.html', delete=False)
-    f.write(res.content)
-    f.flush()
-    webbrowser.open_new_tab(f.name)
+import browser_cookie3
 
 
 def read_buy_page(page, status=None):
@@ -38,12 +29,11 @@ def bargain(x):
     except:
         return x
 
-BUFF_COOKIE = get_cookie("cookie.json")
-
+session = requests.session()
+session.cookies = browser_cookie3.edge()
 
 def read_page(url, direction):
-    res = requests.get(url, cookies=BUFF_COOKIE)
-    # open_in_browser(res)
+    res = session.get(url)
     soup = bs4.BeautifulSoup(res.content, features="lxml")
     if soup.select_one(".nodata") is not None:
         return None
@@ -58,9 +48,6 @@ def read_page(url, direction):
     order_snos = [tr.attrs["id"] for tr in table.select("tr") if "id" in tr.attrs]
     if direction == "buy":
         df['sno'] = order_snos
-    elif direction == "sell":
-        # identified by instance id
-        pass
 
     # 方便匹配
     df["饰品"] = df["饰品"].map(lambda x: x.replace(": ", ":"))

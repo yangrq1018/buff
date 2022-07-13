@@ -1,4 +1,4 @@
-from buff_cookie import get_cookie
+from buff_cookie import get_cookie_from_clipboard
 import requests
 import pandas as pd
 from tqdm import tqdm
@@ -18,7 +18,7 @@ session.mount('https://buff.163.com/api', HTTPAdapter(max_retries=retries))
 sell_order_url = "https://buff.163.com/api/market/goods/sell_order?" + \
     "game=csgo&goods_id={goods_id}&page_num=1&sort_by=default&mode=&allow_tradable_cooldown=1&paintseed={paint_seed}&_=1648797763879"
 
-BUFF_COOKIE = get_cookie()
+BUFF_COOKIE = get_cookie_from_clipboard()
 
 
 def get_sell_orders(goods_id, paint_seed):

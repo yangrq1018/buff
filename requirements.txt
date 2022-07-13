@@ -1,4 +1,3 @@
-pyperclip==1.8.2
 requests
 pandas
 tqdm
@@ -7,3 +6,4 @@ pyecharts
 bs4
 lxml
 xlsxwriter
+browser_cookie3
