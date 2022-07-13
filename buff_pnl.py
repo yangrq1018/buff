@@ -39,6 +39,8 @@ def read_page(url, direction):
     soup = bs4.BeautifulSoup(res.content, features="lxml")
     if soup.select_one(".nodata") is not None:
         return None
+    if soup.select_one(".login-panel") is not None:
+        raise RuntimeError("login required, please open Edge browser and log yourself in on https://buff.163.com")
     table = soup.select_one(".detail-tab-cont .list_tb")
 
     goods_link = table.select("div.name-cont a")
