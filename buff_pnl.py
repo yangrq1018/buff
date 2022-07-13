@@ -29,8 +29,10 @@ def bargain(x):
     except:
         return x
 
+
 session = requests.session()
 session.cookies = browser_cookie3.edge()
+
 
 def read_page(url, direction):
     res = session.get(url)
@@ -45,15 +47,16 @@ def read_page(url, direction):
     df = pd.read_html(str(table))[0]
     df = df.drop(columns=df.columns[:2], axis=1)
     df.columns = ["饰品"] + list(df.columns[1:])
-    order_snos = [tr.attrs["id"] for tr in table.select("tr") if "id" in tr.attrs]
+    order_snos = [tr.attrs["id"]
+                  for tr in table.select("tr") if "id" in tr.attrs]
     if direction == "buy":
         df['sno'] = order_snos
 
-    # 方便匹配
+    # 替换全角标点符号，方便匹配
     df["饰品"] = df["饰品"].map(lambda x: x.replace(": ", ":"))
-    
 
     if "售价" in df.columns:
+        # 去掉人民币符合，方便转换成float
         df["售价"] = df["售价"].map(lambda x: re.sub(
             "[()¥]", "", x).strip()).map(bargain)
     else:
@@ -74,10 +77,7 @@ def read_pages(dir, successful=False):
     def gen():
         i = 1
         while True:
-            status = None
-            if successful:
-                status = "success"
-            df = f(i, status=status)
+            df = f(i, status="success" if successful else None)
             if df is None:
                 return
             i += 1
@@ -90,24 +90,38 @@ def read_pages(dir, successful=False):
     return df.reset_index(drop=True)
 
 
+def analyse(buy: pd.DataFrame, sell: pd.DataFrame, writer: pd.ExcelWriter):
+    inter = pd.Index(set(buy.index).intersection(sell.index))
+    buy = buy.loc[inter]
+    sell = sell.loc[inter]
+
+    # add an e
+    buy['id'] = buy.groupby('饰品').cumcount()
+    sell['id'] = sell.groupby('饰品').cumcount()
+    paired = buy. \
+        merge(sell, on=['id', '饰品'], how='outer',  suffixes=['_buy', '_sell']). \
+        drop(['id', '商品链接_buy', '商品链接_sell'], axis=1)
+    paired.dropna(axis=0, how='any', subset=['价格', '售价'], inplace=True)
+    paired['收益'] = paired['售价'] - paired['价格']
+    paired['手续费'] = paired['售价'] * 2.5 / 100
+    paired['手续费'] = paired['手续费'].round(2)
+    paired['费后收益'] = paired['收益'] - paired['手续费']
+
+    paired.sort_values('费后收益', inplace=True)
+    paired.to_excel(writer, sheet_name="配对交易")
+    print("raw pnl",  paired['收益'].sum())
+    print("after fee pnl",  paired['费后收益'].sum())
+
+
 if __name__ == '__main__':
     buy = read_pages("buy", successful=True)
     sell = read_pages("sell", successful=True)
-    round_trip_index = pd.Index(set(sell["饰品"]).intersection(set(buy["饰品"])))
-    buy = buy.set_index("饰品")
-    sell = sell.set_index("饰品")
+    # 处理还价
     buy['价格'] = buy['价格'].map(lambda x: x.split(' ')[0])
-    inter = pd.Index(set(buy.index).intersection(sell.index))
-    paired_buy = buy.loc[inter]
-    paired_sell = sell.loc[inter]
-    raw_pnl = paired_sell['售价'].astype(float).sum() - \
-        paired_buy['价格'].astype(float).sum()
-    print("raw pnl", raw_pnl)
+    buy['价格'] = buy['价格'].astype(float)
+    sell['售价'] = sell['售价'].astype(float)
     writer = pd.ExcelWriter('profit.xlsx', engine='xlsxwriter')
-    buy.to_excel(writer, sheet_name="buy")
-    sell.to_excel(writer, sheet_name="sell")
-    paired_buy.to_excel(writer, sheet_name="paired_buy")
-    paired_sell.to_excel(writer, sheet_name="paired_sell")
+    buy.to_excel(writer, sheet_name="买入")
+    sell.to_excel(writer, sheet_name="卖出")
+    analyse(buy, sell, writer)
     writer.save()
-    
-    
